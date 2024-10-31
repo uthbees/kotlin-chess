@@ -5,7 +5,5 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun Board(gameState: GameState) {
-    Button(onClick = { gameState.nextTurn() }) {
-        Text("turn: ${gameState.round}")
-    }
+    Text("turn: ${gameState.round}")
 }
