@@ -4,13 +4,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-data class GameState(val round: Int = 1, val turnColor: PlayerColor = PlayerColor.WHITE)
-
 class GameViewModel : ViewModel() {
     private val _gameState = MutableStateFlow(GameState())
     val gameState: StateFlow<GameState> = _gameState.asStateFlow()
 
-    fun nextTurn() {
+    private fun nextTurn() {
         _gameState.update { currentState ->
             if (currentState.turnColor == PlayerColor.WHITE) {
                 currentState.copy(turnColor = PlayerColor.BLACK)
@@ -21,13 +19,69 @@ class GameViewModel : ViewModel() {
     }
 }
 
+data class GameState(
+    val round: Int = 1,
+    val turnColor: PlayerColor = PlayerColor.WHITE,
+    val gameStatus: GameStatus = GameStatus.PLAYING,
+    val board: List<List<Piece?>> = listOf(
+        listOf(
+            Piece(PieceType.ROOK, PlayerColor.BLACK),
+            Piece(PieceType.KNIGHT, PlayerColor.BLACK),
+            Piece(PieceType.BISHOP, PlayerColor.BLACK),
+            Piece(PieceType.QUEEN, PlayerColor.BLACK),
+            Piece(PieceType.KING, PlayerColor.BLACK),
+            Piece(PieceType.BISHOP, PlayerColor.BLACK),
+            Piece(PieceType.KNIGHT, PlayerColor.BLACK),
+            Piece(PieceType.ROOK, PlayerColor.BLACK),
+        ),
+        listOf(
+            Piece(PieceType.PAWN, PlayerColor.BLACK),
+            Piece(PieceType.PAWN, PlayerColor.BLACK),
+            Piece(PieceType.PAWN, PlayerColor.BLACK),
+            Piece(PieceType.PAWN, PlayerColor.BLACK),
+            Piece(PieceType.PAWN, PlayerColor.BLACK),
+            Piece(PieceType.PAWN, PlayerColor.BLACK),
+            Piece(PieceType.PAWN, PlayerColor.BLACK),
+            Piece(PieceType.PAWN, PlayerColor.BLACK),
+        ),
+        listOf(null, null, null, null, null, null, null, null),
+        listOf(null, null, null, null, null, null, null, null),
+        listOf(null, null, null, null, null, null, null, null),
+        listOf(null, null, null, null, null, null, null, null),
+        listOf(
+            Piece(PieceType.PAWN, PlayerColor.WHITE),
+            Piece(PieceType.PAWN, PlayerColor.WHITE),
+            Piece(PieceType.PAWN, PlayerColor.WHITE),
+            Piece(PieceType.PAWN, PlayerColor.WHITE),
+            Piece(PieceType.PAWN, PlayerColor.WHITE),
+            Piece(PieceType.PAWN, PlayerColor.WHITE),
+            Piece(PieceType.PAWN, PlayerColor.WHITE),
+            Piece(PieceType.PAWN, PlayerColor.WHITE),
+        ),
+        listOf(
+            Piece(PieceType.ROOK, PlayerColor.WHITE),
+            Piece(PieceType.KNIGHT, PlayerColor.WHITE),
+            Piece(PieceType.BISHOP, PlayerColor.WHITE),
+            Piece(PieceType.QUEEN, PlayerColor.WHITE),
+            Piece(PieceType.KING, PlayerColor.WHITE),
+            Piece(PieceType.BISHOP, PlayerColor.WHITE),
+            Piece(PieceType.KNIGHT, PlayerColor.WHITE),
+            Piece(PieceType.ROOK, PlayerColor.WHITE),
+        ),
+    )
+)
+
 enum class PlayerColor {
     BLACK, WHITE
 }
 
-/*
-Game state: White's turn, black's turn, white won, black won
-Turn number
-Track last capture/pawn advancement somewhere
+enum class GameStatus {
+    PLAYING, WHITE_WON, BLACK_WON, STALEMATE,
+}
 
-*/
+class Piece(val type: PieceType, val color: PlayerColor) {
+}
+
+enum class PieceType {
+    KING, QUEEN, ROOK, KNIGHT, BISHOP, PAWN
+}

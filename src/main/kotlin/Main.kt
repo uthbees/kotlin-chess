@@ -1,8 +1,13 @@
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.material.Button
-import androidx.compose.material.Text
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.MaterialTheme
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 
@@ -12,10 +17,9 @@ fun App(gameViewModel: GameViewModel = GameViewModel()) {
     val gameState by gameViewModel.gameState.collectAsState()
 
     MaterialTheme {
-        Button(onClick = { gameViewModel.nextTurn() }) {
-            Text("next turn")
+        Box(modifier = Modifier.fillMaxSize().background(color = Color(0xFF385426))) {
+            Board(gameState)
         }
-        Board(gameState)
     }
 }
 
