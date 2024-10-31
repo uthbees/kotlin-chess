@@ -1,4 +1,6 @@
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.ViewModel
+import chessnuticons.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -80,6 +82,27 @@ enum class GameStatus {
 }
 
 class Piece(val type: PieceType, val color: PlayerColor) {
+    fun getIcon(): ImageVector {
+        return when (color) {
+            PlayerColor.BLACK -> when (type) {
+                PieceType.KING -> ChessnutIcons.Bk
+                PieceType.QUEEN -> ChessnutIcons.Bq
+                PieceType.ROOK -> ChessnutIcons.Br
+                PieceType.KNIGHT -> ChessnutIcons.Bn
+                PieceType.BISHOP -> ChessnutIcons.Bb
+                PieceType.PAWN -> ChessnutIcons.Bp
+            }
+
+            PlayerColor.WHITE -> when (type) {
+                PieceType.KING -> ChessnutIcons.Wk
+                PieceType.QUEEN -> ChessnutIcons.Wq
+                PieceType.ROOK -> ChessnutIcons.Wr
+                PieceType.KNIGHT -> ChessnutIcons.Wn
+                PieceType.BISHOP -> ChessnutIcons.Wb
+                PieceType.PAWN -> ChessnutIcons.Wp
+            }
+        }
+    }
 }
 
 enum class PieceType {

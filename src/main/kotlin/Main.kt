@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import java.awt.Dimension
 
 @Composable
 @Preview
@@ -17,14 +18,15 @@ fun App(gameViewModel: GameViewModel = GameViewModel()) {
     val gameState by gameViewModel.gameState.collectAsState()
 
     MaterialTheme {
-        Box(modifier = Modifier.fillMaxSize().background(color = Color(0xFF385426))) {
+        Box(modifier = Modifier.fillMaxSize().background(color = Color(0xff2e4022))) {
             Board(gameState)
         }
     }
 }
 
 fun main() = application {
-    Window(onCloseRequest = ::exitApplication) {
+    Window(onCloseRequest = ::exitApplication, title = "Chess") {
+        window.minimumSize = Dimension(400, 400)
         App()
     }
 }

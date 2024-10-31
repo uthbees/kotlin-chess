@@ -1,27 +1,41 @@
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Text
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun Board(gameState: GameState) {
-    CenteredSquare {
+    BoardWrapper {
         Column(
-            modifier = Modifier.fillMaxSize().background(Color.Blue), verticalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier.fillMaxSize()
         ) {
-            gameState.board.forEach { row ->
+            gameState.board.forEachIndexed { rowIndex, row ->
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(50.dp), horizontalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier.fillMaxWidth().weight(1f)
                 ) {
-                    row.forEach { cell ->
-                        if (cell != null) {
-                            Text(text = cell.type.toString(), modifier = Modifier.fillMaxSize())
+                    row.forEachIndexed { columnIndex, piece ->
+                        var modifier = Modifier.fillMaxSize().weight(1f)
+                        modifier = if ((rowIndex + columnIndex) % 2 == 0) {
+                            // Light squares
+                            modifier.background(Color(0xfff1cc86))
                         } else {
-                            Text(text = "empty", modifier = Modifier.fillMaxSize())
+                            // Dark squares
+                            modifier.background(Color(0xff895c39))
+                        }
+
+                        if (piece == null) {
+                            Box(modifier = modifier)
+                        } else {
+                            Image(
+                                piece.getIcon(),
+                                contentDescription = "",
+                                modifier = modifier,
+                            )
                         }
                     }
                 }
@@ -32,15 +46,20 @@ fun Board(gameState: GameState) {
     }
 }
 
+/**
+ * A centered square to wrap the board in.
+ */
 @Composable
-private fun CenteredSquare(content: @Composable () -> Unit) {
+private fun BoardWrapper(content: @Composable () -> Unit) {
+    val borderWidth = 5.dp;
+
     Column(
         modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        BoxWithConstraints {
+        BoxWithConstraints(modifier = Modifier.border(borderWidth, Color.Black)) {
             val squareSize = minOf(constraints.maxWidth, constraints.maxHeight)
             Box(
-                modifier = Modifier.size(squareSize.dp)
+                modifier = Modifier.size(squareSize.dp).padding(borderWidth),
             ) { content() }
         }
     }
