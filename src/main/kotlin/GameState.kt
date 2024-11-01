@@ -129,6 +129,10 @@ class GameViewModel : ViewModel() {
             }
         }
     }
+
+    fun reset() {
+        _gameState.update { GameState() }
+    }
 }
 
 data class GameState(

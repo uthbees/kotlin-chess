@@ -1,6 +1,11 @@
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.Button
+import androidx.compose.material.ButtonDefaults
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -10,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun InfoBar(gameState: GameState) {
+fun InfoBar(gameState: GameState, resetGame: () -> Unit) {
     Box(modifier = Modifier.fillMaxHeight(0.1f).fillMaxWidth()) {
         var textContent = "Round ${gameState.round} - "
 
@@ -26,12 +31,23 @@ fun InfoBar(gameState: GameState) {
             GameStatus.STALEMATE -> " | Stalemate!"
         }
 
-        Text(
-            textContent,
-            fontSize = 20.sp,
-            maxLines = 1,
-            modifier = Modifier.align(Alignment.Center).background(color = Color.White)
-                .border(5.dp, Color.Black).padding(10.dp)
-        )
+        InfoBarTextbox(text = textContent, modifier = Modifier.align(Alignment.Center))
+        Button(
+            onClick = resetGame,
+            colors = ButtonDefaults.buttonColors(backgroundColor = Color.White),
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 10.dp)
+        ) {
+            Text("Reset")
+        }
     }
+}
+
+@Composable
+private fun InfoBarTextbox(text: String = "", modifier: Modifier = Modifier) {
+    Text(
+        text,
+        fontSize = 20.sp,
+        maxLines = 1,
+        modifier = modifier.background(color = Color.White).border(5.dp, Color.Black).padding(10.dp)
+    )
 }
