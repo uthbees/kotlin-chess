@@ -69,13 +69,22 @@ class Board(var state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
          * Add a place to the set of valid moves for the piece if it's a valid cell and
          * there's not another friendly piece there.
          * */
-        fun registerReachablePlace(rowIndex: Int, columnIndex: Int, canCapture: Boolean = true): RegistrationResult {
+        fun registerReachablePlace(
+            rowIndex: Int,
+            columnIndex: Int,
+            canMove: Boolean = true,
+            canCapture: Boolean = true
+        ): RegistrationResult {
             val cell = attemptToCreateLocation(rowIndex, columnIndex) ?: return RegistrationResult.INVALID
 
             if (piece.color != this.at(cell)?.color) {
                 if (this.at(cell) == null) {
-                    validPieceMoves.add(cell)
-                    return RegistrationResult.UNOCCUPIED
+                    if (canMove) {
+                        validPieceMoves.add(cell)
+                        return RegistrationResult.UNOCCUPIED_AND_VALID
+                    } else {
+                        return RegistrationResult.INVALID
+                    }
                 } else if (canCapture) {
                     validPieceMoves.add(cell)
                     return RegistrationResult.OCCUPIED_BUT_VALID
@@ -149,15 +158,19 @@ class Board(var state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
 
             PieceType.PAWN -> {
                 if (piece.color == PlayerColor.WHITE) {
-                    val result = registerReachablePlace(pieceLocation.rowIndex - 1, pieceLocation.columnIndex, false)
-                    if (!piece.hasMoved && result == RegistrationResult.UNOCCUPIED) {
-                        registerReachablePlace(pieceLocation.rowIndex - 2, pieceLocation.columnIndex, false)
+                    val result = registerReachablePlace(pieceLocation.rowIndex - 1, pieceLocation.columnIndex, canCapture = false)
+                    if (!piece.hasMoved && result == RegistrationResult.UNOCCUPIED_AND_VALID) {
+                        registerReachablePlace(pieceLocation.rowIndex - 2, pieceLocation.columnIndex, canCapture = false)
                     }
+                    registerReachablePlace(pieceLocation.rowIndex - 1, pieceLocation.columnIndex - 1, canMove = false)
+                    registerReachablePlace(pieceLocation.rowIndex - 1, pieceLocation.columnIndex + 1, canMove = false)
                 } else {
-                    val result = registerReachablePlace(pieceLocation.rowIndex + 1, pieceLocation.columnIndex, false)
-                    if (!piece.hasMoved && result == RegistrationResult.UNOCCUPIED) {
-                        registerReachablePlace(pieceLocation.rowIndex + 2, pieceLocation.columnIndex, false)
+                    val result = registerReachablePlace(pieceLocation.rowIndex + 1, pieceLocation.columnIndex, canCapture = false)
+                    if (!piece.hasMoved && result == RegistrationResult.UNOCCUPIED_AND_VALID) {
+                        registerReachablePlace(pieceLocation.rowIndex + 2, pieceLocation.columnIndex, canCapture = false)
                     }
+                    registerReachablePlace(pieceLocation.rowIndex + 1, pieceLocation.columnIndex - 1, canMove = false)
+                    registerReachablePlace(pieceLocation.rowIndex + 1, pieceLocation.columnIndex + 1, canMove = false)
                 }
             }
         }
@@ -167,7 +180,7 @@ class Board(var state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
 }
 
 private enum class RegistrationResult {
-    UNOCCUPIED, OCCUPIED_BUT_VALID, INVALID,
+    UNOCCUPIED_AND_VALID, OCCUPIED_BUT_VALID, INVALID,
 }
 
 private fun getNextCellInDirection(startCell: Location, direction: Direction): Location? {
