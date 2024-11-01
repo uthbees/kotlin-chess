@@ -21,8 +21,15 @@ class GameViewModel : ViewModel() {
             }
 
             assert(newBoardState[to.rowIndex][to.columnIndex]?.type != PieceType.KING)
+            assert(newBoardState[from.rowIndex][from.columnIndex] !== null)
 
-            newBoardState[to.rowIndex][to.columnIndex] = newBoardState[from.rowIndex][from.columnIndex]?.copy()
+            val pieceToMove = newBoardState[from.rowIndex][from.columnIndex]!!
+
+            newBoardState[to.rowIndex][to.columnIndex] = if (pieceCanPromote(pieceToMove, to)) {
+                Piece(PieceType.QUEEN, pieceToMove.color)
+            } else {
+                pieceToMove.copy()
+            }
             newBoardState[to.rowIndex][to.columnIndex]!!.hasMoved = true
             newBoardState[from.rowIndex][from.columnIndex] = null
 
@@ -139,4 +146,14 @@ fun attemptToCreateLocation(rowIndex: Int, columnIndex: Int): Location? {
         return null
     }
     return Location(rowIndex, columnIndex)
+}
+
+private fun pieceCanPromote(piece: Piece, location: Location): Boolean {
+    val color = piece.color
+    val rowIdx = location.rowIndex
+
+    if (piece.type == PieceType.PAWN) {
+        return ((color == PlayerColor.WHITE && rowIdx == 0) || (color == PlayerColor.BLACK && rowIdx == 7))
+    }
+    return false
 }
