@@ -1,4 +1,13 @@
-class Board(var state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
+import kotlin.math.abs
+
+class Board(val state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
+    // The ghost pawn keeps track of pawns who moved two spaces last turn for en passant
+    // purposes. It should not be copied over to the new board when a move is made, since
+    // it should only be around for one turn.
+    var ghostPawn: GhostPawn? = null
+
+    data class GhostPawn(val ghostLocation: Location, val realLocation: Location)
+
     /**
      * A utility function to get the piece at a given location.
      * */
@@ -70,10 +79,7 @@ class Board(var state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
          * there's not another friendly piece there.
          * */
         fun registerReachablePlace(
-            rowIndex: Int,
-            columnIndex: Int,
-            canMove: Boolean = true,
-            canCapture: Boolean = true
+            rowIndex: Int, columnIndex: Int, canMove: Boolean = true, canCapture: Boolean = true
         ): RegistrationResult {
             val cell = attemptToCreateLocation(rowIndex, columnIndex) ?: return RegistrationResult.INVALID
 
@@ -157,20 +163,37 @@ class Board(var state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
             }
 
             PieceType.PAWN -> {
-                if (piece.color == PlayerColor.WHITE) {
-                    val result = registerReachablePlace(pieceLocation.rowIndex - 1, pieceLocation.columnIndex, canCapture = false)
-                    if (!piece.hasMoved && result == RegistrationResult.UNOCCUPIED_AND_VALID) {
-                        registerReachablePlace(pieceLocation.rowIndex - 2, pieceLocation.columnIndex, canCapture = false)
-                    }
-                    registerReachablePlace(pieceLocation.rowIndex - 1, pieceLocation.columnIndex - 1, canMove = false)
-                    registerReachablePlace(pieceLocation.rowIndex - 1, pieceLocation.columnIndex + 1, canMove = false)
+                val direction = if (piece.color == PlayerColor.WHITE) {
+                    -1
                 } else {
-                    val result = registerReachablePlace(pieceLocation.rowIndex + 1, pieceLocation.columnIndex, canCapture = false)
-                    if (!piece.hasMoved && result == RegistrationResult.UNOCCUPIED_AND_VALID) {
-                        registerReachablePlace(pieceLocation.rowIndex + 2, pieceLocation.columnIndex, canCapture = false)
+                    1
+                }
+
+                val result = registerReachablePlace(
+                    pieceLocation.rowIndex + 1 * direction, pieceLocation.columnIndex, canCapture = false
+                )
+                if (!piece.hasMoved && result == RegistrationResult.UNOCCUPIED_AND_VALID) {
+                    registerReachablePlace(
+                        pieceLocation.rowIndex + 2 * direction, pieceLocation.columnIndex, canCapture = false
+                    )
+                }
+                registerReachablePlace(
+                    pieceLocation.rowIndex + 1 * direction, pieceLocation.columnIndex - 1, canMove = false
+                )
+                registerReachablePlace(
+                    pieceLocation.rowIndex + 1 * direction, pieceLocation.columnIndex + 1, canMove = false
+                )
+                if (ghostPawn != null) {
+                    print(ghostPawn.toString())
+                    val ghostPawnInReachableColumn =
+                        abs(pieceLocation.columnIndex - ghostPawn!!.ghostLocation.columnIndex) == 1
+                    val ghostPawnInReachableRow =
+                        ghostPawn!!.ghostLocation.rowIndex == pieceLocation.rowIndex + 1 * direction
+                    if (ghostPawnInReachableColumn && ghostPawnInReachableRow) {
+                        registerReachablePlace(
+                            ghostPawn!!.ghostLocation.rowIndex, ghostPawn!!.ghostLocation.columnIndex, canMove = true
+                        )
                     }
-                    registerReachablePlace(pieceLocation.rowIndex + 1, pieceLocation.columnIndex - 1, canMove = false)
-                    registerReachablePlace(pieceLocation.rowIndex + 1, pieceLocation.columnIndex + 1, canMove = false)
                 }
             }
         }

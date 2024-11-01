@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlin.math.abs
 
 class GameViewModel : ViewModel() {
     private val _gameState = MutableStateFlow(GameState())
@@ -21,10 +22,17 @@ class GameViewModel : ViewModel() {
             }
 
             assert(newBoardState[to.rowIndex][to.columnIndex]?.type != PieceType.KING)
-            assert(newBoardState[from.rowIndex][from.columnIndex] !== null)
+            assert(newBoardState[from.rowIndex][from.columnIndex] != null)
 
             val pieceToMove = newBoardState[from.rowIndex][from.columnIndex]!!
 
+            // If we are performing en passant, take the appropriate pawn.
+            if (pieceToMove.type == PieceType.PAWN && to == currentState.board.ghostPawn?.ghostLocation) {
+                val takenPawnLocation = currentState.board.ghostPawn!!.realLocation
+                newBoardState[takenPawnLocation.rowIndex][takenPawnLocation.columnIndex] = null
+            }
+
+            // Move the piece (and perform pawn promotion if applicable).
             newBoardState[to.rowIndex][to.columnIndex] = if (pieceCanPromote(pieceToMove, to)) {
                 Piece(PieceType.QUEEN, pieceToMove.color)
             } else {
@@ -33,7 +41,16 @@ class GameViewModel : ViewModel() {
             newBoardState[to.rowIndex][to.columnIndex]!!.hasMoved = true
             newBoardState[from.rowIndex][from.columnIndex] = null
 
-            currentState.copy(board = Board(newBoardState))
+            // Create a new board from the new board state. Note that the last board's ghost pawn is not copied
+            // over (since it's no longer applicable).
+            val board = Board(newBoardState)
+
+            // Set the ghost pawn for en passant purposes if applicable (that is, if we just moved a pawn two spaces).
+            if (pieceToMove.type == PieceType.PAWN && abs(to.rowIndex - from.rowIndex) == 2) {
+                board.ghostPawn = Board.GhostPawn(Location((to.rowIndex + from.rowIndex) / 2, to.columnIndex), to)
+            }
+
+            currentState.copy(board = board)
         }
 
         nextTurn()
