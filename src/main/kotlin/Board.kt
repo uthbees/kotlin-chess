@@ -5,11 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
@@ -22,13 +20,15 @@ fun Board(gameState: GameState, getValidPieceMoves: (pieceLocation: Location) ->
     }
 
     fun selectCell(location: Location) {
-        if (selectedCell == location) {
-            selectedCell = null
+        selectedCell = if (selectedCell == location) {
+            null
         } else {
             val pieceInCell = gameState.board.at(location)
 
             if (pieceInCell != null && pieceInCell.color == gameState.turnColor) {
-                selectedCell = location
+                location
+            } else {
+                null
             }
         }
     }
@@ -70,7 +70,7 @@ fun Board(gameState: GameState, getValidPieceMoves: (pieceLocation: Location) ->
                             if (validMoves.value.any { it == cell }) {
                                 Box(
                                     modifier = Modifier.fillMaxSize(fraction = 0.5f)
-                                        .background(color = Color(0xc0222222), shape = CircleShape)
+                                        .background(color = Color(0xb0222222), shape = CircleShape)
                                         .align(Alignment.Center)
                                 )
                             }
