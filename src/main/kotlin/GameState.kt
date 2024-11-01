@@ -59,21 +59,20 @@ class GameViewModel : ViewModel() {
 
         // We have no valid moves. :(
         if (gameState.value.board.inCheck(gameState.value.turnColor)) {
+            // For checkmate, we turn back the clock by a turn so that it'll stay on the winning turn.
             when (gameState.value.turnColor) {
-                PlayerColor.WHITE ->
-                    _gameState.update { currentState ->
-                        currentState.copy(
-                            gameStatus = GameStatus.BLACK_WON
-                        )
-                    }
+                PlayerColor.WHITE -> _gameState.update { currentState ->
+                    currentState.copy(
+                        gameStatus = GameStatus.BLACK_WON, turnColor = PlayerColor.BLACK, round = currentState.round - 1
+                    )
+                }
 
-                PlayerColor.BLACK ->
-                    _gameState.update { currentState ->
-                        currentState.copy(
-                            gameStatus = GameStatus.WHITE_WON
-                        )
+                PlayerColor.BLACK -> _gameState.update { currentState ->
+                    currentState.copy(
+                        gameStatus = GameStatus.WHITE_WON, turnColor = PlayerColor.WHITE
+                    )
 
-                    }
+                }
             }
         } else {
             _gameState.update { currentState ->
@@ -81,25 +80,6 @@ class GameViewModel : ViewModel() {
                     gameStatus = GameStatus.STALEMATE
                 )
             }
-        }
-
-        // Turn back the clock by a turn so that it'll stay on the winning turn.
-        when (gameState.value.turnColor) {
-            PlayerColor.WHITE ->
-                _gameState.update { currentState ->
-                    currentState.copy(
-                        turnColor = PlayerColor.BLACK,
-                        round = currentState.round - 1
-                    )
-                }
-
-            PlayerColor.BLACK ->
-                _gameState.update { currentState ->
-                    currentState.copy(
-                        turnColor = PlayerColor.WHITE
-                    )
-
-                }
         }
     }
 }
