@@ -1,111 +1,228 @@
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-
-@Composable
-fun Board(
-    gameState: GameState,
-    getValidPieceMoves: (pieceLocation: Location) -> List<Location>,
-    movePiece: (from: Location, to: Location) -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    var selectedCell: Location? by remember { mutableStateOf(null) }
-    val validMoves = derivedStateOf {
-        if (selectedCell != null) getValidPieceMoves(selectedCell!!) else emptyList()
+class Board(var state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
+    /**
+     * A utility function to get the piece at a given location.
+     * */
+    fun at(location: Location): Piece? {
+        return state[location.rowIndex][location.columnIndex]
     }
 
-    fun selectCell(location: Location) {
-        if (validMoves.value.contains(location)) {
-            assert(selectedCell != null)
-            movePiece(selectedCell!!, location)
-        }
+    fun inCheck(playerColor: PlayerColor): Boolean {
+        var kingLocation: Location? = null
 
-        selectedCell = if (selectedCell == location) {
-            null
-        } else {
-            val pieceInCell = gameState.board.at(location)
-
-            if (pieceInCell != null && pieceInCell.color == gameState.turnColor) {
-                location
-            } else {
-                null
+        for ((rowIndex, row) in state.withIndex()) {
+            for ((columnIndex, cell) in row.withIndex()) {
+                if (cell?.type == PieceType.KING && cell.color == playerColor) {
+                    assert(kingLocation == null)
+                    kingLocation = Location(rowIndex, columnIndex)
+                }
             }
         }
-    }
 
-    BoardWrapper {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            gameState.board.state.forEachIndexed { rowIndex, row ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().weight(1f)
-                ) {
-                    row.forEachIndexed { columnIndex, piece ->
-                        val cell = Location(rowIndex, columnIndex)
+        assert(kingLocation != null)
 
-                        var modifier = Modifier.fillMaxSize().weight(1f).clickable(
-                            interactionSource = interactionSource, indication = null
-                        ) {
-                            selectCell(cell)
-                        }
+        for ((rowIndex, row) in state.withIndex()) {
+            for ((columnIndex, cell) in row.withIndex()) {
+                if (cell != null && cell.color != playerColor) {
+                    val pieceValidMoves = getRawValidPieceMoves(Location(rowIndex, columnIndex))
 
-                        modifier = if ((rowIndex + columnIndex) % 2 == 0) {
-                            // Light squares
-                            modifier.background(Color(0xfff1cc86))
-                        } else {
-                            // Dark squares
-                            modifier.background(Color(0xff895c39))
-                        }
-
-                        if (selectedCell?.rowIndex == rowIndex && selectedCell?.columnIndex == columnIndex) {
-                            modifier = modifier.border(4.dp, Color(0xff7dab5f))
-                        }
-
-                        Box(modifier = modifier) {
-                            if (piece != null) {
-                                Image(piece.getIcon(), contentDescription = "")
-                            }
-
-                            if (validMoves.value.any { it == cell }) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(fraction = 0.5f)
-                                        .background(color = Color(0xb0222222), shape = CircleShape)
-                                        .align(Alignment.Center)
-                                )
-                            }
-                        }
+                    if (pieceValidMoves.contains(kingLocation)) {
+                        return true
                     }
                 }
             }
         }
+        return false
     }
-}
 
-/**
- * A centered square to wrap the board in.
- * */
-@Composable
-private fun BoardWrapper(content: @Composable () -> Unit) {
-    val borderWidth = 5.dp;
+    /**
+     * Returns a list of all the valid moves of the piece at a given location on this board.
+     * Takes all factors including check into account.
+     * */
+    fun getValidPieceMoves(pieceLocation: Location, playerColor: PlayerColor): List<Location> {
+        assert(this.at(pieceLocation)?.color == playerColor)
 
-    Column(
-        modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        BoxWithConstraints(modifier = Modifier.border(borderWidth, Color.Black)) {
-            val squareSize = minOf(constraints.maxWidth, constraints.maxHeight)
-            Box(
-                modifier = Modifier.size(squareSize.dp).padding(borderWidth),
-            ) { content() }
+        // Filter out all moves that would leave us in check afterward.
+        return getRawValidPieceMoves(pieceLocation).filter { rawValidPieceMove ->
+            val virtualBoardState = state.map {
+                it.toMutableList()
+            }
+            virtualBoardState[rawValidPieceMove.rowIndex][rawValidPieceMove.columnIndex] =
+                virtualBoardState[pieceLocation.rowIndex][pieceLocation.columnIndex]
+            virtualBoardState[pieceLocation.rowIndex][pieceLocation.columnIndex] = null
+            val virtualBoard = Board(virtualBoardState)
+
+            !virtualBoard.inCheck(playerColor)
         }
     }
+
+    /**
+     * Returns a list of all the valid moves of the piece at a given location on this board.
+     * Note: Does not take check (or player turn) into account.
+     * */
+    private fun getRawValidPieceMoves(pieceLocation: Location): List<Location> {
+        val piece = this.at(pieceLocation) ?: return emptyList()
+
+        val validPieceMoves = mutableListOf<Location>()
+
+        fun registerReachablePlace(rowIndex: Int, columnIndex: Int) {
+            val cell = attemptToCreateLocation(rowIndex, columnIndex) ?: return
+
+            if (piece.color != this.at(cell)?.color) {
+                validPieceMoves.add(cell)
+            }
+        }
+
+        fun registerBlockableLine(pieceLocation: Location, direction: Direction) {
+            var blocked = false
+
+            var currentCell: Location? = getNextCellInDirection(pieceLocation, direction)
+
+            while (!blocked && currentCell != null) {
+                if (piece.color != this.at(currentCell)?.color) {
+                    validPieceMoves.add(currentCell)
+                }
+
+                if (this.at(currentCell) != null) {
+                    blocked = true
+                } else {
+                    currentCell = getNextCellInDirection(currentCell, direction)
+                }
+            }
+        }
+
+        when (piece.type) {
+            PieceType.KING -> {
+                for (rowIndex in pieceLocation.rowIndex - 1..pieceLocation.rowIndex + 1) {
+                    for (columnIndex in pieceLocation.columnIndex - 1..pieceLocation.columnIndex + 1) {
+                        registerReachablePlace(rowIndex, columnIndex)
+                    }
+                }
+            }
+
+            PieceType.QUEEN -> {
+                for (direction in Direction.entries) {
+                    registerBlockableLine(pieceLocation, direction)
+                }
+            }
+
+            PieceType.ROOK -> {
+                registerBlockableLine(pieceLocation, Direction.NORTH)
+                registerBlockableLine(pieceLocation, Direction.EAST)
+                registerBlockableLine(pieceLocation, Direction.SOUTH)
+                registerBlockableLine(pieceLocation, Direction.WEST)
+            }
+
+            PieceType.BISHOP -> {
+                registerBlockableLine(pieceLocation, Direction.NORTHEAST)
+                registerBlockableLine(pieceLocation, Direction.NORTHWEST)
+                registerBlockableLine(pieceLocation, Direction.SOUTHEAST)
+                registerBlockableLine(pieceLocation, Direction.SOUTHWEST)
+            }
+
+            PieceType.KNIGHT -> {
+                registerReachablePlace(pieceLocation.rowIndex - 2, pieceLocation.columnIndex - 1)
+                registerReachablePlace(pieceLocation.rowIndex - 2, pieceLocation.columnIndex + 1)
+                registerReachablePlace(pieceLocation.rowIndex - 1, pieceLocation.columnIndex - 2)
+                registerReachablePlace(pieceLocation.rowIndex + 1, pieceLocation.columnIndex - 2)
+                registerReachablePlace(pieceLocation.rowIndex - 1, pieceLocation.columnIndex + 2)
+                registerReachablePlace(pieceLocation.rowIndex + 1, pieceLocation.columnIndex + 2)
+                registerReachablePlace(pieceLocation.rowIndex + 2, pieceLocation.columnIndex - 1)
+                registerReachablePlace(pieceLocation.rowIndex + 2, pieceLocation.columnIndex + 1)
+            }
+
+            PieceType.PAWN -> {
+                if (piece.color == PlayerColor.WHITE) {
+                    registerReachablePlace(pieceLocation.rowIndex - 1, pieceLocation.columnIndex)
+                } else {
+                    registerReachablePlace(pieceLocation.rowIndex + 1, pieceLocation.columnIndex)
+                }
+            }
+        }
+
+        return validPieceMoves
+    }
 }
+
+private fun getNextCellInDirection(startCell: Location, direction: Direction): Location? {
+    var rowIndex = startCell.rowIndex
+    var columnIndex = startCell.columnIndex
+
+    when (direction) {
+        Direction.NORTH -> rowIndex--
+        Direction.NORTHEAST -> {
+            rowIndex--
+            columnIndex++
+        }
+
+        Direction.EAST -> columnIndex++
+        Direction.SOUTHEAST -> {
+            rowIndex++
+            columnIndex++
+        }
+
+        Direction.SOUTH -> rowIndex++
+        Direction.SOUTHWEST -> {
+            rowIndex++
+            columnIndex--
+        }
+
+        Direction.WEST -> columnIndex--
+        Direction.NORTHWEST -> {
+            rowIndex--
+            columnIndex--
+        }
+    }
+
+    return attemptToCreateLocation(rowIndex, columnIndex)
+}
+
+enum class Direction {
+    NORTH, NORTHEAST, EAST, SOUTHEAST, SOUTH, SOUTHWEST, WEST, NORTHWEST
+}
+
+val defaultBoardState = listOf(
+    listOf(
+        Piece(PieceType.ROOK, PlayerColor.BLACK),
+        Piece(PieceType.KNIGHT, PlayerColor.BLACK),
+        Piece(PieceType.BISHOP, PlayerColor.BLACK),
+        Piece(PieceType.QUEEN, PlayerColor.BLACK),
+        Piece(PieceType.KING, PlayerColor.BLACK),
+        Piece(PieceType.BISHOP, PlayerColor.BLACK),
+        Piece(PieceType.KNIGHT, PlayerColor.BLACK),
+        Piece(PieceType.ROOK, PlayerColor.BLACK),
+    ),
+    listOf(
+        Piece(PieceType.PAWN, PlayerColor.BLACK),
+        Piece(PieceType.PAWN, PlayerColor.BLACK),
+        Piece(PieceType.PAWN, PlayerColor.BLACK),
+        Piece(PieceType.PAWN, PlayerColor.BLACK),
+        Piece(PieceType.PAWN, PlayerColor.BLACK),
+        Piece(PieceType.PAWN, PlayerColor.BLACK),
+        Piece(PieceType.PAWN, PlayerColor.BLACK),
+        Piece(PieceType.PAWN, PlayerColor.BLACK),
+    ),
+    listOf(null, null, null, null, null, null, null, null),
+    listOf(null, null, null, null, null, null, null, null),
+    listOf(null, null, null, null, null, null, null, null),
+    listOf(null, null, null, null, null, null, null, null),
+    listOf(
+        Piece(PieceType.PAWN, PlayerColor.WHITE),
+        Piece(PieceType.PAWN, PlayerColor.WHITE),
+        Piece(PieceType.PAWN, PlayerColor.WHITE),
+        Piece(PieceType.PAWN, PlayerColor.WHITE),
+        Piece(PieceType.PAWN, PlayerColor.WHITE),
+        Piece(PieceType.PAWN, PlayerColor.WHITE),
+        Piece(PieceType.PAWN, PlayerColor.WHITE),
+        Piece(PieceType.PAWN, PlayerColor.WHITE),
+    ),
+    listOf(
+        Piece(PieceType.ROOK, PlayerColor.WHITE),
+        Piece(PieceType.KNIGHT, PlayerColor.WHITE),
+        Piece(PieceType.BISHOP, PlayerColor.WHITE),
+        Piece(PieceType.QUEEN, PlayerColor.WHITE),
+        Piece(PieceType.KING, PlayerColor.WHITE),
+        Piece(PieceType.BISHOP, PlayerColor.WHITE),
+        Piece(PieceType.KNIGHT, PlayerColor.WHITE),
+        Piece(PieceType.ROOK, PlayerColor.WHITE),
+    ),
+)

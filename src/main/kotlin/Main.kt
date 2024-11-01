@@ -20,10 +20,7 @@ fun App(gameViewModel: GameViewModel = GameViewModel()) {
     MaterialTheme {
         Column(modifier = Modifier.fillMaxSize().background(color = Color(0xff2e4022))) {
             InfoBar(gameState)
-            Board(gameState,
-                { pieceLocation: Location -> gameViewModel.getValidPieceMoves(pieceLocation) },
-                { from: Location, to: Location -> gameViewModel.movePiece(from, to) })
-
+            BoardUi(gameState) { from: Location, to: Location -> gameViewModel.movePiece(from, to) }
         }
     }
 }
