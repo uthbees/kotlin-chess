@@ -12,7 +12,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun Board(gameState: GameState, getValidPieceMoves: (pieceLocation: Location) -> List<Location>) {
+fun Board(
+    gameState: GameState,
+    getValidPieceMoves: (pieceLocation: Location) -> List<Location>,
+    movePiece: (from: Location, to: Location) -> Unit
+) {
     val interactionSource = remember { MutableInteractionSource() }
     var selectedCell: Location? by remember { mutableStateOf(null) }
     val validMoves = derivedStateOf {
@@ -20,6 +24,11 @@ fun Board(gameState: GameState, getValidPieceMoves: (pieceLocation: Location) ->
     }
 
     fun selectCell(location: Location) {
+        if (validMoves.value.contains(location)) {
+            assert(selectedCell != null)
+            movePiece(selectedCell!!, location)
+        }
+
         selectedCell = if (selectedCell == location) {
             null
         } else {

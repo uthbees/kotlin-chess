@@ -42,7 +42,7 @@ class GameViewModel : ViewModel() {
         }
 
         fun registerBlockableLine(pieceLocation: Location, direction: Direction) {
-            var blocked = false;
+            var blocked = false
 
             var currentCell: Location? = getNextCellInDirection(pieceLocation, direction)
 
@@ -108,7 +108,26 @@ class GameViewModel : ViewModel() {
             }
         }
 
-        return validPieceMoves;
+        return validPieceMoves
+    }
+
+    fun movePiece(from: Location, to: Location) {
+        if (!getValidPieceMoves(from).contains(to)) {
+            return
+        }
+
+        _gameState.update { currentState ->
+            val newBoardState = currentState.board.state.map {
+                it.toMutableList()
+            }
+
+            newBoardState[to.rowIndex][to.columnIndex] = newBoardState[from.rowIndex][from.columnIndex]
+            newBoardState[from.rowIndex][from.columnIndex] = null
+
+            currentState.copy(board = Board(newBoardState))
+        }
+
+        nextTurn()
     }
 }
 
