@@ -10,16 +10,6 @@ class GameViewModel : ViewModel() {
     private val _gameState = MutableStateFlow(GameState())
     val gameState: StateFlow<GameState> = _gameState.asStateFlow()
 
-    private fun nextTurn() {
-        _gameState.update { currentState ->
-            if (currentState.turnColor == PlayerColor.WHITE) {
-                currentState.copy(turnColor = PlayerColor.BLACK)
-            } else {
-                currentState.copy(round = currentState.round + 1, turnColor = PlayerColor.WHITE)
-            }
-        }
-    }
-
     fun movePiece(from: Location, to: Location) {
         if (!gameState.value.board.getValidPieceMoves(from, gameState.value.turnColor).contains(to)) {
             return
@@ -39,6 +29,77 @@ class GameViewModel : ViewModel() {
         }
 
         nextTurn()
+    }
+
+    private fun nextTurn() {
+        _gameState.update { currentState ->
+            if (currentState.turnColor == PlayerColor.WHITE) {
+                currentState.copy(turnColor = PlayerColor.BLACK)
+            } else {
+                currentState.copy(round = currentState.round + 1, turnColor = PlayerColor.WHITE)
+            }
+        }
+
+        // Check for checkmate and stalemate.
+        for ((rowIndex, row) in gameState.value.board.state.withIndex()) {
+            for ((columnIndex, cell) in row.withIndex()) {
+                if (cell != null && cell.color == gameState.value.turnColor) {
+                    val pieceValidMoves = gameState.value.board.getValidPieceMoves(
+                        Location(rowIndex, columnIndex), gameState.value.turnColor
+                    )
+
+                    if (pieceValidMoves.isNotEmpty()) {
+                        // We have at least one valid move, so we can stop looking.
+                        return
+                    }
+                }
+            }
+        }
+
+        // We have no valid moves. :(
+        if (gameState.value.board.inCheck(gameState.value.turnColor)) {
+            when (gameState.value.turnColor) {
+                PlayerColor.WHITE ->
+                    _gameState.update { currentState ->
+                        currentState.copy(
+                            gameStatus = GameStatus.BLACK_WON
+                        )
+                    }
+
+                PlayerColor.BLACK ->
+                    _gameState.update { currentState ->
+                        currentState.copy(
+                            gameStatus = GameStatus.WHITE_WON
+                        )
+
+                    }
+            }
+        } else {
+            _gameState.update { currentState ->
+                currentState.copy(
+                    gameStatus = GameStatus.STALEMATE
+                )
+            }
+        }
+
+        // Turn back the clock by a turn so that it'll stay on the winning turn.
+        when (gameState.value.turnColor) {
+            PlayerColor.WHITE ->
+                _gameState.update { currentState ->
+                    currentState.copy(
+                        turnColor = PlayerColor.BLACK,
+                        round = currentState.round - 1
+                    )
+                }
+
+            PlayerColor.BLACK ->
+                _gameState.update { currentState ->
+                    currentState.copy(
+                        turnColor = PlayerColor.WHITE
+                    )
+
+                }
+        }
     }
 }
 
