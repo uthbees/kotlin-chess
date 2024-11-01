@@ -19,7 +19,7 @@ fun App(gameViewModel: GameViewModel = GameViewModel()) {
 
     MaterialTheme {
         Box(modifier = Modifier.fillMaxSize().background(color = Color(0xff2e4022))) {
-            Board(gameState)
+            Board(gameState) { pieceLocation: Location -> gameViewModel.getValidPieceMoves(pieceLocation) }
         }
     }
 }
