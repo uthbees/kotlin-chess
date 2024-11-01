@@ -29,12 +29,21 @@ class Board(val state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
 
         assert(kingLocation != null)
 
+        return cellIsThreatened(kingLocation!!, playerColor)
+    }
+
+    /**
+     * Is a cell threatened?
+     * Caution - is subject to the same limitations as getRawValidPieceMoves and thus should only be
+     * used for determining where kings are allowed to move (since king threats are symmetrical).
+     * */
+    private fun cellIsThreatened(targetCell: Location, playerColor: PlayerColor): Boolean {
         for ((rowIndex, row) in state.withIndex()) {
             for ((columnIndex, cell) in row.withIndex()) {
                 if (cell != null && cell.color != playerColor) {
                     val pieceValidMoves = getRawValidPieceMoves(Location(rowIndex, columnIndex))
 
-                    if (pieceValidMoves.contains(kingLocation)) {
+                    if (pieceValidMoves.contains(targetCell)) {
                         return true
                     }
                 }
@@ -50,8 +59,11 @@ class Board(val state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
     fun getValidPieceMoves(pieceLocation: Location, playerColor: PlayerColor): List<Location> {
         assert(this.at(pieceLocation)?.color == playerColor)
 
+        val validPieceMoves = getRawValidPieceMoves(pieceLocation).toMutableList()
+        validPieceMoves.addAll(getValidCastlingPieceMoves(pieceLocation, playerColor))
+
         // Filter out all moves that would leave us in check afterward.
-        return getRawValidPieceMoves(pieceLocation).filter { rawValidPieceMove ->
+        return validPieceMoves.filter { rawValidPieceMove ->
             val virtualBoardState = state.map {
                 it.toMutableList()
             }
@@ -67,7 +79,9 @@ class Board(val state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
 
     /**
      * Returns a list of all the valid moves of the piece at a given location on this board.
-     * Note: Does not take check (or player turn) into account.
+     * Caution: Does not take check (or player turn) into account and does not include castling. Should
+     * only be used as an authoritative list when dealing with where kings are allowed to move (since
+     * king threats are symmetrical).
      * */
     private fun getRawValidPieceMoves(pieceLocation: Location): List<Location> {
         val piece = this.at(pieceLocation) ?: return emptyList()
@@ -129,6 +143,9 @@ class Board(val state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
                         registerReachablePlace(rowIndex, columnIndex)
                     }
                 }
+
+                // The king can also castle, but we have to handle those moves elsewhere in the flow since this
+                // function is used in functions that we need to use to handle the castling moves.
             }
 
             PieceType.QUEEN -> {
@@ -184,7 +201,6 @@ class Board(val state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
                     pieceLocation.rowIndex + 1 * direction, pieceLocation.columnIndex + 1, canMove = false
                 )
                 if (ghostPawn != null) {
-                    print(ghostPawn.toString())
                     val ghostPawnInReachableColumn =
                         abs(pieceLocation.columnIndex - ghostPawn!!.ghostLocation.columnIndex) == 1
                     val ghostPawnInReachableRow =
@@ -199,6 +215,55 @@ class Board(val state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
         }
 
         return validPieceMoves
+    }
+
+    private fun getValidCastlingPieceMoves(pieceLocation: Location, playerColor: PlayerColor): List<Location> {
+        val piece = this.at(pieceLocation) ?: return emptyList()
+        if (piece.type != PieceType.KING || piece.hasMoved || this.inCheck(playerColor)) {
+            return emptyList()
+        }
+
+        val validCastlingPieceMoves = mutableListOf<Location>()
+
+        for (rookColumnIndex in listOf(0, 7)) {
+            val potentialRook = this.at(Location(pieceLocation.rowIndex, rookColumnIndex))
+            if (potentialRook?.type == PieceType.ROOK && !potentialRook.hasMoved) {
+                var blocked = false
+
+                // Check if any of the cells the king would pass through are blocked or under attack.
+                assert(pieceLocation.columnIndex == 4)
+                val range = if (rookColumnIndex == 0) {
+                    // Here we also have to make sure that the second column (index 1) is empty so that
+                    // the rook can pass through it. (It's okay if it's under attack.)
+                    if (this.at(Location(pieceLocation.rowIndex, 1)) != null) {
+                        blocked = true
+                    }
+                    2..3
+                } else {
+                    5..6
+                }
+                for (columnIndex in range) {
+                    val cell = Location(pieceLocation.rowIndex, columnIndex)
+                    if (this.at(cell) !== null || cellIsThreatened(cell, playerColor)) {
+                        blocked = true
+                    }
+                }
+
+                if (!blocked) {
+                    validCastlingPieceMoves.add(
+                        Location(
+                            pieceLocation.rowIndex, if (rookColumnIndex == 0) {
+                                2
+                            } else {
+                                6
+                            }
+                        )
+                    )
+                }
+            }
+        }
+
+        return validCastlingPieceMoves
     }
 }
 

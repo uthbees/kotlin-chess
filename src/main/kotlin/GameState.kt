@@ -21,10 +21,27 @@ class GameViewModel : ViewModel() {
                 it.toMutableList()
             }
 
-            assert(newBoardState[to.rowIndex][to.columnIndex]?.type != PieceType.KING)
-            assert(newBoardState[from.rowIndex][from.columnIndex] != null)
+            /**
+             * Performs the basics of a piece move (the actual move itself). Also handles pawn
+             * promotion if applicable.
+             * */
+            fun performBasicMove(basicMoveFrom: Location, basicMoveTo: Location) {
+                val pieceToBasicMove = newBoardState[basicMoveFrom.rowIndex][basicMoveFrom.columnIndex]!!
+
+                newBoardState[basicMoveTo.rowIndex][basicMoveTo.columnIndex] =
+                    if (pieceCanPromote(pieceToBasicMove, basicMoveTo)) {
+                        Piece(PieceType.QUEEN, pieceToBasicMove.color)
+                    } else {
+                        pieceToBasicMove.copy()
+                    }
+                newBoardState[basicMoveTo.rowIndex][basicMoveTo.columnIndex]!!.hasMoved = true
+                newBoardState[basicMoveFrom.rowIndex][basicMoveFrom.columnIndex] = null
+            }
 
             val pieceToMove = newBoardState[from.rowIndex][from.columnIndex]!!
+
+            assert(newBoardState[to.rowIndex][to.columnIndex]?.type != PieceType.KING)
+            assert(newBoardState[from.rowIndex][from.columnIndex] != null)
 
             // If we are performing en passant, take the appropriate pawn.
             if (pieceToMove.type == PieceType.PAWN && to == currentState.board.ghostPawn?.ghostLocation) {
@@ -32,14 +49,20 @@ class GameViewModel : ViewModel() {
                 newBoardState[takenPawnLocation.rowIndex][takenPawnLocation.columnIndex] = null
             }
 
-            // Move the piece (and perform pawn promotion if applicable).
-            newBoardState[to.rowIndex][to.columnIndex] = if (pieceCanPromote(pieceToMove, to)) {
-                Piece(PieceType.QUEEN, pieceToMove.color)
-            } else {
-                pieceToMove.copy()
+            performBasicMove(from, to)
+
+            // Move the appropriate rook if we're castling.
+            if (pieceToMove.type == PieceType.KING) {
+                val horizontalDistanceMoved = abs(to.columnIndex - from.columnIndex)
+                assert(horizontalDistanceMoved in 0..2)
+                if (horizontalDistanceMoved == 2) {
+                    when (to.columnIndex) {
+                        2 -> performBasicMove(Location(from.rowIndex, 0), Location(from.rowIndex, 3))
+                        6 -> performBasicMove(Location(from.rowIndex, 7), Location(from.rowIndex, 5))
+                        else -> assert(false)
+                    }
+                }
             }
-            newBoardState[to.rowIndex][to.columnIndex]!!.hasMoved = true
-            newBoardState[from.rowIndex][from.columnIndex] = null
 
             // Create a new board from the new board state. Note that the last board's ghost pawn is not copied
             // over (since it's no longer applicable).
