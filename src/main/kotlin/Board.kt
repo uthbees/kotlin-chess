@@ -47,7 +47,8 @@ class Board(var state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
                 it.toMutableList()
             }
             virtualBoardState[rawValidPieceMove.rowIndex][rawValidPieceMove.columnIndex] =
-                virtualBoardState[pieceLocation.rowIndex][pieceLocation.columnIndex]
+                virtualBoardState[pieceLocation.rowIndex][pieceLocation.columnIndex]?.copy()
+            virtualBoardState[rawValidPieceMove.rowIndex][rawValidPieceMove.columnIndex]!!.hasMoved = true
             virtualBoardState[pieceLocation.rowIndex][pieceLocation.columnIndex] = null
             val virtualBoard = Board(virtualBoardState)
 
@@ -64,14 +65,26 @@ class Board(var state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
 
         val validPieceMoves = mutableListOf<Location>()
 
-        fun registerReachablePlace(rowIndex: Int, columnIndex: Int) {
-            val cell = attemptToCreateLocation(rowIndex, columnIndex) ?: return
+        /**
+         * Add a place to the set of valid moves for the piece if it's a valid cell and
+         * there's not another friendly piece there.
+         * */
+        fun registerReachablePlace(rowIndex: Int, columnIndex: Int): RegistrationResult {
+            val cell = attemptToCreateLocation(rowIndex, columnIndex) ?: return RegistrationResult.INVALID
 
             if (piece.color != this.at(cell)?.color) {
                 validPieceMoves.add(cell)
+                if (this.at(cell) == null) {
+                    return RegistrationResult.UNOCCUPIED
+                }
+                return RegistrationResult.OCCUPIED_BUT_VALID
             }
+            return RegistrationResult.INVALID
         }
 
+        /**
+         * Add cells in a line to the set of valid moves until we find one that isn't valid.
+         * */
         fun registerBlockableLine(pieceLocation: Location, direction: Direction) {
             var blocked = false
 
@@ -132,15 +145,27 @@ class Board(var state: List<List<Piece?>> = defaultBoardState.toMutableList()) {
 
             PieceType.PAWN -> {
                 if (piece.color == PlayerColor.WHITE) {
-                    registerReachablePlace(pieceLocation.rowIndex - 1, pieceLocation.columnIndex)
+                    val result = registerReachablePlace(pieceLocation.rowIndex - 1, pieceLocation.columnIndex)
+                    if (!piece.hasMoved && result == RegistrationResult.UNOCCUPIED) {
+                        registerReachablePlace(pieceLocation.rowIndex - 2, pieceLocation.columnIndex)
+                    }
                 } else {
-                    registerReachablePlace(pieceLocation.rowIndex + 1, pieceLocation.columnIndex)
+                    val result = registerReachablePlace(pieceLocation.rowIndex + 1, pieceLocation.columnIndex)
+                    if (!piece.hasMoved && result == RegistrationResult.UNOCCUPIED) {
+                        registerReachablePlace(pieceLocation.rowIndex + 2, pieceLocation.columnIndex)
+                    }
                 }
             }
         }
 
         return validPieceMoves
     }
+}
+
+private enum class RegistrationResult {
+    UNOCCUPIED,
+    OCCUPIED_BUT_VALID,
+    INVALID,
 }
 
 private fun getNextCellInDirection(startCell: Location, direction: Direction): Location? {

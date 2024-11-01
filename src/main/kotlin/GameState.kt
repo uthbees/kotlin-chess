@@ -22,7 +22,8 @@ class GameViewModel : ViewModel() {
 
             assert(newBoardState[to.rowIndex][to.columnIndex]?.type != PieceType.KING)
 
-            newBoardState[to.rowIndex][to.columnIndex] = newBoardState[from.rowIndex][from.columnIndex]
+            newBoardState[to.rowIndex][to.columnIndex] = newBoardState[from.rowIndex][from.columnIndex]?.copy()
+            newBoardState[to.rowIndex][to.columnIndex]!!.hasMoved = true
             newBoardState[from.rowIndex][from.columnIndex] = null
 
             currentState.copy(board = Board(newBoardState))
@@ -122,7 +123,7 @@ enum class PieceType {
     KING, QUEEN, ROOK, KNIGHT, BISHOP, PAWN
 }
 
-class Piece(val type: PieceType, val color: PlayerColor) {
+data class Piece(val type: PieceType, val color: PlayerColor, var hasMoved: Boolean = false) {
     fun getIcon(): ImageVector {
         return when (color) {
             PlayerColor.BLACK -> when (type) {
