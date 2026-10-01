@@ -1,6 +1,6 @@
 ## Kotlin chess
 
-A simple chess application written in Kotlin, to learn Kotlin.
+A native Kotlin chess application built with Jetpack Compose, featuring complete move validation including special moves such as en passant and castling.
 
 ![demo gif](./demo.gif)
 
