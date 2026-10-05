@@ -13,3 +13,7 @@ The project is done, but here's a wishlist of fancy features that could potentia
 * [ ] Support all stalemate conditions (e.g. 50 moves with no game progress).
 * [ ] Drag and drop pieces?
 * [ ] Add a mode where you can play against Stockfish.
+
+### AI disclaimer
+
+This project does not contain any AI-generated code.
